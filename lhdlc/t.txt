@@ -1,0 +1,5 @@
+module top_module
+  a = XOR b, c
+  d = AND e, f
+  z = XOR a, d
+endmodule

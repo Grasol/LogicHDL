@@ -1,0 +1,45 @@
+; INSTRUCTION LIST FOR LOGICHDLv0.1
+; 
+; T - TRUE
+; F - FALSE
+; N - NULL
+; S - SIGnal - cable or const signal
+; X - XSTRing - string
+;
+;     MNEMONIC    | OPCODE | DST | SRC | SRC1 | SRC2 | OPTIONAL SRC 
+; ==================================================================
+;LOGIC GATES:
+  BUF               0000    TRUE  TRUE   SIG    NULL   0  
+  XOR               0001    TRUE  TRUE   SIG    SIG    253
+  AND               0002    TRUE  TRUE   SIG    SIG    253
+  OR                0003    TRUE  TRUE   SIG    SIG    253
+  PARITY            0004    TRUE  TRUE   SIG    SIG    253
+  TRI               0005    TRUE  TRUE   SIG    SIG    0
+  PULLUP            0006    TRUE  FALSE  NULL   NULL   0 
+  PULLDOWN          0007    TRUE  FALSE  NULL   NULL   0
+;
+;FLIPFLOPS:
+  FFRS              0010    TRUE  TRUE   SIG    SIG    3
+  FFRSPEDGE         0012    TRUE  TRUE   SIG    SIG    3
+  FFRSNEDGE         0013    TRUE  TRUE   SIG    SIG    3
+  FFD               0014    TRUE  TRUE   SIG    SIG    2
+  FFDPEDGE          0016    TRUE  TRUE   SIG    SIG    2
+  FFDNEDGE          0017    TRUE  TRUE   SIG    SIG    2
+  FFT               0018    TRUE  TRUE   SIG    SIG    2
+  FFTPEDGE          001A    TRUE  TRUE   SIG    SIG    2
+  FFTNEDGE          001B    TRUE  TRUE   SIG    SIG    2
+  FFJK              001C    TRUE  TRUE   SIG    SIG    3
+  FFJKPEDGE         001E    TRUE  TRUE   SIG    SIG    3
+  FFJKNEDGE         001F    TRUE  TRUE   SIG    SIG    3
+;
+;I/O ELEMENTS:
+  SWITCH            0040    TRUE  TRUE   XSTR   XSTR   1
+  BUTTON            0041    TRUE  TRUE   XSTR   XSTR   1
+  KEYBOARD          0042    TRUE  TRUE   XSTR   NULL   0
+  CLOCK             0043    TRUE  FALSE  NULL   NULL   0
+  LED               0048    FALSE TRUE   SIG    SIG    253
+;
+;MISC:
+  MUX               0050    TRUE  TRUE   XSTR   SIG    253
+  DEMUX             0051    TRUE  TRUE   XSTR   SIG    253
+  COUNTER           0052    TRUE  TRUE   SIG    SIG    2

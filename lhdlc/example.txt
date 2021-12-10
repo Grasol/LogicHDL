@@ -1,0 +1,91 @@
+
+
+
+module adder 
+  a_in, b_in, c_in = IO q_out, c_out
+  
+  s1    = XOR a_in, b_in
+  q_out = XOR s1, c_in
+  s2    = AND a_in, b_in
+  s3    = AND s1, c_in
+  c_out = OR s2, s3
+
+endmodule
+
+module adder2 
+  a_in, b_in, c_in = IO q_out, c_out
+
+  s1    = XOR a_in, b_in
+
+
+
+
+  q_out = XOR s1, c_in
+  s2    = AND a_in, b_in ;  ; nie wiem
+  s3    = AND s1, c_in
+  c_out = OR s2, s3
+
+
+
+endmodule
+
+
+
+; 00 24 00 03 | 40 00 | 40 01 | 40 02
+; 00 25 02 00 | 40 03 | 40 04
+; 00 01 01 02 | 40 05 | 40 00 | 40 01
+; 00 01 01 02 | 40 03 | 40 05 | 40 02
+; 00 02 01 02 | 40 06 | 40 00 | 40 01
+; 00 02 01 02 | 40 07 | 40 05 | 40 02
+; 00 03 01 02 | 40 04 | 40 06 | 40 07
+;
+;
+;0byte 1byte 2byte 3byte (dst+src)bytes
+;   opcode    dst   src       args
+;
+;
+;args:
+; 00Xc cccc cccc cccc
+; 01Xv vvvv vvvv vvvv
+; 10Xv vvvv vvvv vvvv vvvv vvvv vvvv vvvv
+; 11Xv vvvv vvvv vvvv vvvv vvvv vvvv vvvv vvvv vvvv vvvv vvvv vvvv vvvv vvvv vvvv
+;
+;
+;
+;GATES:
+; 01 - XOR
+; 02 - AND
+; 03 - OR
+; 04 - PARITY
+; 05 - TRI
+; (special gate)
+; - NOT
+;
+;FLIP FLOPS:
+; 10 - FFRS
+; 11 - FFRSNEGEDGE
+; 12 - FFD
+; 13 - FFDEDGE
+; 14 - FFT
+; 15 - FFTEDGE
+; 16 - FFJK
+; 17 - FFJKEDGE
+;
+;IN/OUT
+; 20 - SWITCH
+; 21 - BUTTON
+; 22 - CLOCK
+; 24 - IN
+; 25 - OUT
+; 26 - LED
+; 27 - KEYBOARD
+;
+;SPECIAL
+; 30 - MEMORY
+; 31 - RANDOM
+; 32 - MUX
+; 33 - DEMUX
+; 34 - COUNTER
+;
+    
+ 

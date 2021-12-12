@@ -1,5 +1,20 @@
-#include "synthesizer.h"
+// LogicHDL Compiler v0.1
+//
+// Copyright 2021 Grasol
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//     http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
+#include "synthesizer.h"
 
 GlobalArgument* updataGlobalArguments(GlobalTable *gt, uint64_t cable_id, uint8_t flags) {
   GlobalArgument *ga = malloc(sizeof(GlobalArgument));
@@ -93,7 +108,7 @@ uint8_t setFlagsCableID(uint64_t cable_id) {
     res = 0b110;
 
   else 
-    res == -1;
+    res = -1;
 
   return res; 
 }
@@ -104,7 +119,7 @@ uint8_t setFlagsCableID(uint64_t cable_id) {
 // 6 - NOT
 // FF - ERR
 uint8_t argParse(char *arg, uint8_t def_arg) {
-  printf("ARGPARSE: %s %x\n", arg, def_arg);
+  //printf("ARGPARSE: %s %x\n", arg, def_arg);
   if (arg == NULL) {
     return -1;
   }
@@ -115,7 +130,7 @@ uint8_t argParse(char *arg, uint8_t def_arg) {
 
   if (def_arg == 0) { // FALSE
     if (strcmp(arg, "NULL") == 0) {
-      return 0; // NULL is alias Z signal
+      return 0;
     }
 
     return -1;
@@ -145,11 +160,11 @@ uint8_t argParse(char *arg, uint8_t def_arg) {
 
 
 
-int synthesizer(GlobalTable *gt, ModuleData *module) {
+int synthesizer(GlobalTable *gt, ModuleData *module, CablesLink *clink) {
   // init and check module loop
   for (size_t i = 0; i < gt->i_antiloop; i++) {
     if (strcmp(module->name, gt->antiloop_names[i]) == 0) {
-        fprintf(stderr, "error: Module '%s' references module '%s'. This is a non executable operation\n\n", 
+        fprintf(stderr, "error: Module '%s' references module '%s'. This is a non executable operation\n", 
                 gt->antiloop_names[gt->i_antiloop - 1], module->name);
       return 1;
     }
@@ -163,6 +178,7 @@ int synthesizer(GlobalTable *gt, ModuleData *module) {
     goto memory_error;
   }
 
+  module->usage = true;
   lc[0] = NULL;
   size_t ii = 0;
   while (module->instructions[ii] != NULL) {
@@ -183,7 +199,7 @@ int synthesizer(GlobalTable *gt, ModuleData *module) {
     }
     else {
       for (i_id = 0; i_id < INSTR_NUMBER; i_id++) {
-        printf("'%s' '%s'\n", gt->instr_def[i_id]->mnemonic, ip->operation);
+        //printf("'%s' '%s'\n", gt->instr_def[i_id]->mnemonic, ip->operation);
         if (strcmp(gt->instr_def[i_id]->mnemonic, ip->operation) == 0) {
           oper_state = 1; // SIMPLE INSTRUCTION
           break;
@@ -192,7 +208,7 @@ int synthesizer(GlobalTable *gt, ModuleData *module) {
 
       if (oper_state == 0) {
         for (i_md = 0; i_md < gt->n_mod - 1; i_md++) {
-          printf("'%s' '%s' %I64u\n", gt->modules[i_md]->name, ip->operation, gt->n_mod);
+          //printf("'%s' '%s' %I64u\n", gt->modules[i_md]->name, ip->operation, gt->n_mod);
           if (strcmp(gt->modules[i_md]->name, ip->operation) == 0) {
             oper_state = 2; // MODULE
             break;
@@ -202,7 +218,8 @@ int synthesizer(GlobalTable *gt, ModuleData *module) {
     }
     switch (oper_state) {
     case 0: {
-      fprintf(stderr, "error: Invalid operation '%s'\n\n", ip->operation);
+      fprintf(stderr, "%s:%I64u error: Invalid operation '%s'\n", 
+              module->file_name, ip->ln, ip->operation);
       return 1;
     }
 
@@ -230,7 +247,8 @@ int synthesizer(GlobalTable *gt, ModuleData *module) {
       for (uint32_t i = 0; i < ip->dst; i++) { // dst arguments loop
         temp_info = argParse(ip->args[i], gt->instr_def[i_id]->dst);
         if (temp_info == 255) {
-          fprintf(stderr, "error: invalid cable name: '%s'\n\n", ip->args[i]);
+          fprintf(stderr, "%s:%I64u error: invalid cable name: '%s'\n", 
+                  module->file_name, ip->ln, ip->args[i]);
           return 1;
         }
         else if (temp_info == 6) { // NOT
@@ -243,11 +261,19 @@ int synthesizer(GlobalTable *gt, ModuleData *module) {
             cable_id = getCableID(lc, ip->args[i]);
             flags |= setFlagsCableID(cable_id);
             if (flags == 255) {
-              fprintf(stderr, "error: cable ID overflow. Your project is too big :(\n\n");
+              fprintf(stderr, "%s:%I64u error: cable ID overflow. Your project is too big :(\n", 
+                      module->file_name, ip->ln);
               return 1;
             }
           }
           else { // const signal
+            if (gt->instr_def[i_id]->dst == 0 && temp_info == 0) {
+              flags = 0;
+              temp_info = 0;
+              cable_id = 0;
+              continue;           
+            }
+
             cable_id = temp_info;
             flags &= 1;
           }
@@ -259,7 +285,8 @@ int synthesizer(GlobalTable *gt, ModuleData *module) {
           idesc->dst++;
         }
         else {
-          fprintf(stderr, "error: invalid name: '%s'\n\n", ip->args[i]);
+          fprintf(stderr, "%s:%I64u error: invalid name: '%s'\n", 
+                  module->file_name, ip->ln, ip->args[i]);
           return 1;
         }
       }
@@ -270,19 +297,21 @@ int synthesizer(GlobalTable *gt, ModuleData *module) {
           def_arg = gt->instr_def[i_id]->src1_arg;
         }
         else if (idesc->src == 1) {
-          def_arg = gt->instr_def[i_id]->src1_arg;
+          def_arg = gt->instr_def[i_id]->src2_arg;
         }
         else {
           def_arg = 1;
           if (gt->instr_def[i_id]->srcx_arg < idesc->src) {
-            // ERR
+            fprintf(stderr, "%s:%I64u error: invalid cable name: '%s'\n", 
+                    module->file_name, ip->ln, ip->args[i]);
             return 1;
           }
         }
 
         temp_info = argParse(ip->args[i], def_arg);
         if (temp_info == 255) {
-          fprintf(stderr, "error: invalid cable name: '%s'\n\n", ip->args[i]);
+          fprintf(stderr, "%s:%I64u error: invalid cable name: '%s'\n", 
+                  module->file_name, ip->ln, ip->args[i]);
           return 1;
         }
         else if (temp_info == 6) { // NOT
@@ -295,11 +324,19 @@ int synthesizer(GlobalTable *gt, ModuleData *module) {
             cable_id = getCableID(lc, ip->args[i]);
             flags |= setFlagsCableID(cable_id);
             if (flags == 255) {
-              fprintf(stderr, "error: cable ID overflow. Your project is too big :(\n\n");
+              fprintf(stderr, "%s:%I64u error: cable ID overflow. Your project is too big :(\n", 
+                      module->file_name, ip->ln);
               return 1;
             }
           }
           else { // const signal
+            if (def_arg == 0 && temp_info == 0) {
+              flags = 0;
+              temp_info = 0;
+              cable_id = 0;
+              continue;           
+            }
+
             cable_id = temp_info;
             flags &= 1;
           }
@@ -312,15 +349,18 @@ int synthesizer(GlobalTable *gt, ModuleData *module) {
         }
         else if (temp_info == 5) { // XSTR
           size_t xstr_sz = strlen(ip->args[i]);
+          printf("XSTR %s %I64u ->", ip->args[i], xstr_sz);
           if (xstr_sz > 7) {
-            fprintf(stderr, "warning: name '%s' will be cut to 7 characters\n\n", ip->args[i]);
+            fprintf(stderr, "%s:%I64u warning: name '%s' will be cut to 7 characters\n", 
+                    module->file_name, ip->ln, ip->args[i]);
             xstr_sz = 7;
           }
           for (size_t k = 0; k < xstr_sz; k++) {
             cable_id <<= 8;
-            cable_id |= (uint64_t)ip->args[i];
+            cable_id |= (uint64_t)ip->args[i][k];
           }
 
+          printf(" %I64u\n", cable_id);
           flags = setFlagsCableID(cable_id);
           updataGlobalArguments(gt, cable_id, flags);
           flags = 0;
@@ -329,16 +369,222 @@ int synthesizer(GlobalTable *gt, ModuleData *module) {
           idesc->src++;          
         }
         else {
-          fprintf(stderr, "error: invalid name: '%s'\n\n", ip->args[i]);
+          fprintf(stderr, "%s:%I64u error: invalid name: '%s'\n", 
+                  module->file_name, ip->ln, ip->args[i]);
           return 1;
         }
       }
+
+      if (idesc->src < gt->instr_def[i_id]->min_args) {
+        fprintf(stderr, "%s:%I64u warning: too few arguments to instruction '%s'\n", 
+                module->file_name, ip->ln, ip->operation);
+      }
+
+      break;
     }
     
+    case 2: { // module
+      // create list linked cables
+      CablesLink *new_clink = malloc(sizeof(CablesLink)); 
+      if (new_clink == NULL) {
+        goto memory_error;
+      }
 
-    // TODO: CASE 2 AND 3
+      new_clink->cable_id = malloc(sizeof(uint64_t*));
+      if (new_clink->cable_id == NULL) {
+        goto memory_error;
+      }
+
+      new_clink->flags = malloc(sizeof(uint8_t*));
+      if (new_clink->flags == NULL) {
+        goto memory_error;
+      }
+
+      new_clink->cable_id[0] = 0;
+      new_clink->flags[0] = 0;
+      new_clink->dst = 0;
+      new_clink->src = 0;
+
+      uint8_t flags = 0, temp_info = 0;
+      uint64_t cable_id = 0;
+      for (uint32_t i = 0; i < ip->dst + ip->src; i++) { // arguments loop
+        temp_info = argParse(ip->args[i], 1);
+        if (temp_info == 255) {
+          fprintf(stderr, "%s:%I64u error: invalid cable name: '%s'\n", 
+                  module->file_name, ip->ln, ip->args[i]);
+          return 1;
+        }
+        else if (temp_info == 6) { // NOT
+          flags |= 1;
+          continue;
+        }
+        else if (temp_info <= 4) { // SIG 
+          if (temp_info == 4) { // cable
+            lc = updataLocalCables(gt, lc, ip->args[i]);
+            cable_id = getCableID(lc, ip->args[i]);
+            flags |= setFlagsCableID(cable_id);
+            if (flags == 255) {
+              fprintf(stderr, "%s:%I64u error: cable ID overflow. Your project is too big :(\n", 
+                      module->file_name, ip->ln);
+              return 1;
+            }
+          }
+          else { // const signal
+            if (gt->instr_def[i_id]->dst == 0 && temp_info == 0) {
+              flags = 0;
+              temp_info = 0;
+              cable_id = 0;
+              continue;           
+            }
+
+            cable_id = temp_info;
+            flags &= 1;
+          }
+
+          size_t i_ncl = new_clink->dst + new_clink->src;
+          new_clink->cable_id[i_ncl] = cable_id;
+          new_clink->flags[i_ncl] = flags;
+          new_clink->cable_id = realloc(new_clink->cable_id, sizeof(uint64_t*) * (i_ncl + 2));
+          if (new_clink->flags == NULL) {
+            goto memory_error;
+          }
+
+          new_clink->flags = realloc(new_clink->flags, sizeof(uint8_t*) * (i_ncl + 2));
+          if (new_clink->flags == NULL) {
+            goto memory_error;
+          }
+
+          new_clink->cable_id[i_ncl + 1] = 0;
+          new_clink->flags[i_ncl + 1] = 0;
+          flags = 0;
+          temp_info = 0;
+          cable_id = 0;
+          if (i < ip->dst) {
+            new_clink->dst++;
+          }
+          else {
+            new_clink->src++;
+          }
+
+        }
+        else {
+          fprintf(stderr, "%s:%I64u error: invalid name: '%s'\n", 
+                  module->file_name, ip->ln, ip->args[i]);
+          return 1;       
+        }
+      }
+
+      // synthesize called module
+      int err = synthesizer(gt, gt->modules[i_md], new_clink);
+      if (err) {
+        return 1;
+      }
+
+      gt->i_antiloop--;
+      break;
+    }
     
+    case 3: { // IO psuedoop
+      if (clink == NULL) {
+        fprintf(stderr, "%s:%I64u error: module '%s' has not intermodule io connections\n",
+                module->file_name, ip->ln, module->name);
+        return 1;
+      }
 
+      i_id = 0;
+      uint8_t flags = 0, temp_info = 0, io_dst = 0, io_src = 0;
+      uint64_t cable_id = 0;
+      for (uint32_t i = 0; i < ip->dst + ip->src; i++) { // io arguments loop
+        temp_info = argParse(ip->args[i], gt->instr_def[i_id]->dst);
+        if (temp_info == 255) {
+          fprintf(stderr, "%s:%I64u error: invalid cable name: '%s'\n", 
+                  module->file_name, ip->ln, ip->args[i]);
+          return 1;
+        }
+        else if (temp_info == 6) { // NOT
+          flags |= 1;
+          continue;
+        }
+        else if (temp_info <= 4) { // SIG 
+          if (temp_info == 4) {
+            lc = updataLocalCables(gt, lc, ip->args[i]); // cable
+            cable_id = getCableID(lc, ip->args[i]);
+            flags |= setFlagsCableID(cable_id);
+            if (flags == 255) {
+              fprintf(stderr, "%s:%I64u error: cable ID overflow. Your project is too big :(\n", 
+                      module->file_name, ip->ln);
+              return 1;
+            }
+          }
+          else { // const signal
+            if (gt->instr_def[i_id]->dst == 0 && temp_info == 0) {
+              flags = 0;
+              temp_info = 0;
+              cable_id = 0;
+              continue;           
+            }
+
+            cable_id = temp_info;
+            flags &= 1;
+          }
+
+          // new instruction (BUF) descriptor
+          InstructionDesc *idesc = malloc(sizeof(InstructionDesc));
+          if (idesc == NULL) {
+            goto memory_error;
+          } 
+    
+          gt->instr_desc[gt->i_instr] = idesc;
+          gt->i_instr++;
+          gt->instr_desc = realloc(gt->instr_desc, sizeof(InstructionDesc*) * (gt->i_instr + 1));
+          if (gt->instr_desc == NULL) {
+            goto memory_error;
+          }
+    
+          // set descriptor
+          idesc->opcode = gt->instr_def[i_id]->opcode;
+          idesc->args_offset = gt->global_args_offset;
+          idesc->dst = 1; idesc->src = 1;
+          
+          uint64_t clink_cable_id = 0;
+          uint8_t clink_flags = 0;
+          if (i < ip->dst) {
+            updataGlobalArguments(gt, cable_id, flags);
+
+            clink_cable_id = clink->cable_id[clink->dst + io_dst];
+            clink_flags = clink->flags[clink->dst + io_dst];
+            updataGlobalArguments(gt, clink_cable_id, clink_flags);
+            io_dst++;
+          }
+          else {
+            clink_cable_id = clink->cable_id[io_src];
+            clink_flags = clink->flags[io_src];
+            updataGlobalArguments(gt, clink_cable_id, clink_flags);
+
+            updataGlobalArguments(gt, cable_id, flags);
+            io_src++;
+          }
+
+          printf("io_dst:%i | clink->dst:%i | io_src:%i | clink->src:%i\n", io_dst - 1, clink->dst, io_src - 1, clink->src);
+          printf("clink_cable_id:%I64i clink_flags:%i\n", clink_cable_id, clink_flags);
+
+          flags = 0;
+          temp_info = 0;
+          cable_id = 0;
+        }
+        else {
+          fprintf(stderr, "%s:%I64u error: invalid name: '%s'\n", 
+                  module->file_name, ip->ln, ip->args[i]);
+          return 1;
+        
+        }
+      }
+
+      if (io_dst != clink->src || io_src != clink->dst) {
+        fprintf(stderr, "%s:%I64u warning: number of intermodule io connections is invalid\n", 
+                module->file_name, ip->ln);
+      }  
+    }
     }
 
     ii++;

@@ -1,0 +1,69 @@
+
+module top_module
+  a0 = SWITCH swA, NULL
+  a1 = SWITCH swA, NULL
+  a2 = SWITCH swA, NULL
+  a3 = SWITCH swA, NULL
+  a4 = SWITCH swA, NULL
+  a5 = SWITCH swA, NULL
+  a6 = SWITCH swA, NULL
+  a7 = SWITCH swA, NULL
+
+  b0 = SWITCH swB, NULL
+  b1 = SWITCH swB, NULL
+  b2 = SWITCH swB, NULL
+  b3 = SWITCH swB, NULL
+  b4 = SWITCH swB, NULL
+  b5 = SWITCH swB, NULL
+  b6 = SWITCH swB, NULL
+  b7 = SWITCH swB, NULL
+
+  add_sub = SWITCH add_sub, NULL
+
+  NULL = LED res, q0
+  NULL = LED res, q1
+  NULL = LED res, q2
+  NULL = LED res, q3
+  NULL = LED res, q4
+  NULL = LED res, q5
+  NULL = LED res, q6
+  NULL = LED res, q7
+
+  q7, q6, q5, q4, q3, q2, q1, q0 = Calculator add_sub, a7, a6, a5, a4, a3, a2, a1, a0, b7, b6, b5, b4, b3, b2, b1, b0
+
+endmodule
+
+module Calculator
+  oper, a7, a6, a5, a4, a3, a2, a1, a0, b7, b6, b5, b4, b3, b2, b1, b0 = IO q7, q6, q5, q4, q3, q2, q1, q0
+
+  xb0 = XOR b0, oper
+  xb1 = XOR b1, oper
+  xb2 = XOR b2, oper
+  xb3 = XOR b3, oper
+  xb4 = XOR b4, oper
+  xb5 = XOR b5, oper
+  xb6 = XOR b6, oper
+  xb7 = XOR b7, oper
+
+  q0, c0 = Adder a0, xb0, oper
+  q1, c1 = Adder a1, xb1, c0 
+  q2, c2 = Adder a2, xb2, c1 
+  q3, c3 = Adder a3, xb3, c2 
+  q4, c4 = Adder a4, xb4, c3 
+  q5, c5 = Adder a5, xb5, c4 
+  q6, c6 = Adder a6, xb6, c5 
+  q7, c7 = Adder a7, xb7, c6
+
+endmodule
+
+module Adder
+  ai, bi, ci = IO qo, co
+
+  s1 = XOR ai, bi
+  qo = XOR s1, ci
+
+  s2 = AND ai, bi
+  s3 = AND s1, ci
+  co = OR s2, s3
+
+endmodule

@@ -1,4 +1,4 @@
-; LogicHDL Compiler v0.1
+; INSTRUCTION LIST FOR LOGICHDLv0.1
 ; 
 ; T - TRUE
 ; F - FALSE

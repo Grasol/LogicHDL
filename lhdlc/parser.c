@@ -1,3 +1,18 @@
+// LogicHDL Compiler v0.1
+//
+// Copyright 2021 Grasol
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//     http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include "parser.h"
 
@@ -28,7 +43,7 @@ char** splitText(InputData *src) {
   }
   data[0] = NULL;
   size_t data_sz = 1;
-  size_t b_idx, e_idx;
+  size_t b_idx = 0, e_idx = 0;
   
   int state = 0; 
   // 0 - start name 
@@ -148,9 +163,8 @@ ModuleData** parser(ModuleData *modules[], InputData *src, size_t n_mod) {
         module_name = NULL;
       }
       else {
-        printf("'%s'", data[i]);
         parser_state = 8;
-        fprintf(stderr, "%s:%I64u warning: line is not in any module and will be skip\n\n", 
+        fprintf(stderr, "%s:%I64u warning: line is not in any module and will be skip\n", 
                 src->name, ln);
       }
 
@@ -162,7 +176,7 @@ ModuleData** parser(ModuleData *modules[], InputData *src, size_t n_mod) {
       if (checkInString(data[i][0], ",=\n")) {
         if (module_name == NULL) {
           parser_state = 8;
-          fprintf(stderr, "%s:%I64u error: invalid syntax\n\n", src->name, ln);
+          fprintf(stderr, "%s:%I64u error: invalid syntax\n", src->name, ln);
           err |= 1;
         }
         else { 
@@ -179,6 +193,8 @@ ModuleData** parser(ModuleData *modules[], InputData *src, size_t n_mod) {
           }
 
           p->name = module_name;
+          p->file_name = src->name;
+          p->usage = false;
           p->instructions = malloc(sizeof(InstructionData*));
           if (p->instructions == NULL) {
             goto memory_error;
@@ -203,7 +219,7 @@ ModuleData** parser(ModuleData *modules[], InputData *src, size_t n_mod) {
       }
       else {
         parser_state = 8;
-        fprintf(stderr, "%s:%I64u error: invalid name '%s'\n\n", src->name, ln, data[i]);
+        fprintf(stderr, "%s:%I64u error: invalid name '%s'\n", src->name, ln, data[i]);
         err |= 1;
       }
 
@@ -235,6 +251,7 @@ ModuleData** parser(ModuleData *modules[], InputData *src, size_t n_mod) {
       ip->operation = NULL;
       ip->dst = 0;
       ip->src = 0;
+      ip->ln = ln;
       ip->args = malloc(sizeof(char*));
       if (ip->args == NULL) {
         goto memory_error;
@@ -268,14 +285,14 @@ ModuleData** parser(ModuleData *modules[], InputData *src, size_t n_mod) {
 
       if (data[i][0] == '\n') {
         parser_state = 2;
-        fprintf(stderr, "%s:%I64u error: invalid syntax\n\n", src->name, ln);
+        fprintf(stderr, "%s:%I64u error: invalid syntax\n", src->name, ln);
         err |= 1;
         ln++;
       }
       else if (data[i][0] == ',') {
         if (name_argument) {
           parser_state = 2;
-          fprintf(stderr, "%s:%I64u error: invalid syntax ','\n\n", src->name, ln);          
+          fprintf(stderr, "%s:%I64u error: invalid syntax ','\n", src->name, ln);          
           err |= 1;
         }
         else {
@@ -285,7 +302,7 @@ ModuleData** parser(ModuleData *modules[], InputData *src, size_t n_mod) {
       else if (data[i][0] == '=') {
         if (name_argument) {
           parser_state = 2;
-          fprintf(stderr, "%s:%I64u error: invalid syntax '='\n\n", src->name, ln);  
+          fprintf(stderr, "%s:%I64u error: invalid syntax '='\n", src->name, ln);  
           err |= 1;
         }
         else {
@@ -311,7 +328,7 @@ ModuleData** parser(ModuleData *modules[], InputData *src, size_t n_mod) {
     case 0x04: { // operation 
       if (checkInString(data[i][0], ",=\n")) {
         parser_state = 2;
-        fprintf(stderr, "%s:%I64u error: invalid syntax '%c'\n\n", src->name, ln, data[i][0]); 
+        fprintf(stderr, "%s:%I64u error: invalid syntax '%c'\n", src->name, ln, data[i][0]); 
         err |= 1;
         if (data[i][0] == '\n') {
           ln++;
@@ -331,7 +348,7 @@ ModuleData** parser(ModuleData *modules[], InputData *src, size_t n_mod) {
       if (data[i][0] == '\n') {
         parser_state = 2;
         if (name_argument) {
-          fprintf(stderr, "%s:%I64u error: invalid syntax ','\n\n", src->name, ln); 
+          fprintf(stderr, "%s:%I64u error: invalid syntax ','\n", src->name, ln); 
           err |= 1;          
         }
         ln++;
@@ -339,7 +356,7 @@ ModuleData** parser(ModuleData *modules[], InputData *src, size_t n_mod) {
       else if (data[i][0] == ',') {
         if (name_argument) {
           parser_state = 2;
-          fprintf(stderr, "%s:%I64u error: invalid syntax ','\n\n", src->name, ln); 
+          fprintf(stderr, "%s:%I64u error: invalid syntax ','\n", src->name, ln); 
           err |= 1;
         }
         else {
@@ -348,7 +365,7 @@ ModuleData** parser(ModuleData *modules[], InputData *src, size_t n_mod) {
       }
       else if (data[i][0] == '=') {
         parser_state = 2;
-        fprintf(stderr, "%s:%I64u error: invalid syntax '='\n\n", src->name, ln); 
+        fprintf(stderr, "%s:%I64u error: invalid syntax '='\n", src->name, ln); 
         err |= 1;
       }
       else {
@@ -381,7 +398,7 @@ ModuleData** parser(ModuleData *modules[], InputData *src, size_t n_mod) {
   }
 
   if (in_module) {
-    fprintf(stderr, "%s:%I64u error: module '%s' is not close\n\n", 
+    fprintf(stderr, "%s:%I64u error: module '%s' is not close\n", 
             src->name, ln, modules[m_idx]->name);
     err |= 1;
   }

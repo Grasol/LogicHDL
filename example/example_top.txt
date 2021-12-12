@@ -2,7 +2,7 @@ module top_module
   ;NULL, NULL = adder NULL, NULL, NULL
   ;NULL, NULL = adder NULL, NULL, NULL
   ;NULL, NULL = adder2 NULL, NULL, NULL
-  NULL = m2 NULL;
+  NULL = m2 NULL
 
 endmodule
 
@@ -20,5 +20,5 @@ module m2
   s2 = BUF #0
   s3 = BUF #1
   s4 = m1 s1, s2, s3
-  NULL = LED s4
+  NULL = LED led1, s4
 endmodule

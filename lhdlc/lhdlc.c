@@ -1,9 +1,25 @@
+// LogicHDL Compiler v0.1
+//
+// Copyright 2021 Grasol
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//     http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "lhdlc.h"
 #include "parser.h"
 #include "synthesizer.h"
 #include "instructions.h"
 
-char *genOutputFileName(char *name) {
+char* genOutputFileName(char *name) {
   size_t sz = strlen(name);
   char *out = malloc(sz + 4);
   if (out == NULL) {
@@ -140,18 +156,18 @@ int main(int argc, char *argv[]) {
   printf("11111111\n");
   // search top_module
   size_t tm = 0;
-  for (; tm < n_mod; tm++) {
+  for (; tm < n_mod - 1; tm++) {
     if (memcmp(modules[tm]->name, "top_module\0", 11) == 0) {
       break;
     }
   }
 
-  if (tm == n_mod) {
-    fprintf(stderr, "Not found 'top_module'\n\n");
+  if (tm == n_mod - 1) {
+    fprintf(stderr, "error: not found 'top_module'\n\n");
     goto compilation_terminate;
   }
 
-  int err = synthesizer(gt, modules[tm]);
+  int err = synthesizer(gt, modules[tm], NULL);
   if (err) {
     goto compilation_terminate;
   }

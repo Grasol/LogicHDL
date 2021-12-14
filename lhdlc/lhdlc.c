@@ -179,7 +179,7 @@ int main(int argc, char *argv[]) {
   // file construction:
   //  0: instruction descriptors table ptr (IDTP)
   //  8: global arguments table ptr (GATP)
-  // 16: instruction number (INUM)
+  // 16: instructions count (ICNT)
   // 24: global cable id (GCID)
   // IDTP: IDT
   // GATP: GAT

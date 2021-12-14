@@ -172,25 +172,31 @@ int main(int argc, char *argv[]) {
     goto compilation_terminate;
   }
 
+  // TODO: warning if module/cable is not used
+
   // store to bin file
   // 
   // file construction:
-  // 0: INSTRUCTION DESCRIPTORS TABLE PTR
-  // 8: GLOBAL ARGUMENTS TABLE PTR
+  //  0: instruction descriptors table ptr (IDTP)
+  //  8: global arguments table ptr (GATP)
+  // 16: instruction number (INUM)
+  // 24: global cable id (GCID)
   // IDTP: IDT
   // GATP: GAT
-  size_t all_real_sz = 16; // IDTP + GATP
+  size_t all_real_sz = 32; // IDTP + GATP + INUM + GCID
+  size_t i_bin = all_real_sz;
   all_real_sz += (gt->i_instr + 1) * 16;
   all_real_sz += gt->global_args_offset;
 
-  size_t i_bin = 16;
   char *bin_data = malloc(all_real_sz);
   if (bin_data == NULL) {
     goto memory_error;
   }
 
-  u64tochar(bin_data, 16, 8); // IDTP
-  u64tochar(bin_data + 8, (gt->i_instr + 2) * 16, 8); // GATP
+  u64tochar(bin_data, i_bin, 8); // IDTP
+  u64tochar(bin_data + 8, (gt->i_instr + 3) * 16, 8); // GATP
+  u64tochar(bin_data + 16, gt->i_instr, 8); // INUM
+  u64tochar(bin_data + 24, gt->global_cable_id, 8); // GCID
 
   for (size_t i = 0; i < gt->i_instr; i++) {
     u64tochar(bin_data + i_bin, (uint64_t)(gt->instr_desc[i]->opcode), 2);
